@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Page Title</title>	
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="css/main.css" rel="stylesheet" media="all">
+</head>
+<body>
+	<header role="banner">
+	
+		<a class="brand">Fysfemman</a>
+
+	</header>
+	<main role="main">
+		
+		<h1>Fysfemman</h1>
+    
+    <p>Hej {{ name }}</p>
+	</main>
+</body>
+</html>
+
