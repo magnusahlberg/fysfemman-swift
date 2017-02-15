@@ -1,24 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-	<meta charset="utf-8">
-	<title>Page Title</title>	
-	<meta name="description" content="">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link href="css/main.css" rel="stylesheet" media="all">
+    <meta charset="utf-8">
+    <title>Page Title</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="css/main.css" rel="stylesheet" media="all">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("#submit").click(function () {
+                $.post("http://localhost:8090/logout", function (data) {
+                    if (data === 'done') {
+                        window.location.href = "/";
+                    }
+                });
+            });
+        });
+    </script>
 </head>
+
 <body>
-	<header role="banner">
-	
-		<a class="brand">Fysfemman</a>
+    <header role="banner">
 
-	</header>
-	<main role="main">
-		
-		<h1>Fysfemman</h1>
-    
-    <p>Hej {{ name }}</p>
-	</main>
+        <a class="brand">Fysfemman</a>
+
+    </header>
+    <main role="main">
+
+        <h1>Fysfemman</h1>
+
+        <p>Hej {{ name }}</p>
+        <input type="button" value="Logout" id="submit">
+    </main>
 </body>
-</html>
 
+</html>
