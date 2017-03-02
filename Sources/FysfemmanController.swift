@@ -178,9 +178,6 @@ public final class FysfemmanController {
         defer {
             next()
         }
-        //Get current session
-        // Where we will store the current session data
-        //var sess: SessionState?
 
         let maybeSess = request.session
 
