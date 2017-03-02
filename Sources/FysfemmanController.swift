@@ -24,19 +24,22 @@ class Users : Table {
     let password = Column("password")
 }
 
-let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman"), .password("")])
-
-
 public final class FysfemmanController {
-    //    private let activities: Activities
+    private let activities: Activities
     private let users = Users()
+    private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
     public let router = Router()
 
     // Initialising our KituraSession
     private let session = Session(secret: "")
 
-    public init() {//backend: Activities) {
-        //        self.activities = backend
+    public init() {
+        connection.connect() { error in
+            if let error = error {
+                Log.error("SQL: Could not connect: \(error)")
+            }
+        }
+        activities = Activities(withConnection: self.connection)
         setupRoutes()
     }
 
@@ -52,29 +55,25 @@ public final class FysfemmanController {
     private func isAuthorized(email: String, password: String) -> Bool {
         //Connect to database
         var authorized = false
-        connection.connect() { error in
-            if let error = error {
-                Log.error("Error is \(error)")
 
-            }
-            else {
-                let query = Select(users.email, users.password, from: users)
-                    .where(users.email == email)
-                connection.execute(query: query) { result in
-                    if let rows = result.asRows {
-                        Log.info("Rows: \(rows.count))")
-                        if rows.count > 0 {
-                            if let truePassword = rows[0]["password"] as? String {
-                                if truePassword == password {
-                                    Log.info("Password valid")
-                                    authorized = true
-                                }
-                            }
+        let query = Select(users.email, users.password, from: users)
+            .where(users.email == email)
+
+        connection.execute(query: query) { result in
+            if let rows = result.asRows {
+                Log.info("Rows: \(rows.count))")
+                if rows.count > 0 {
+                    if let truePassword = rows[0]["password"] as? String {
+                        if truePassword == password {
+                            authorized = true
                         }
-                    } else if let queryError = result.asError {
-                        Log.error("Something went wrong \(queryError)")
                     }
+                } else {
+                    //TBD: Send user / password incorrect response
+                    Log.error("User not found")
                 }
+            } else if let queryError = result.asError {
+                Log.error("Something went wrong \(queryError)")
             }
         }
         return authorized
