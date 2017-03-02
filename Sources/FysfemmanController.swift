@@ -48,6 +48,8 @@ public final class FysfemmanController {
         router.all(middleware: session)
         router.all(middleware: BodyParser())
         router.get("/", handler: onIndex)
+        router.get("/api/1/activities", handler: onGetActivities)
+        router.post("/api/1/activities", handler: onAddActivity)
         router.post("/login", handler: onLogin)
         router.post("/logout", handler: onLogout)
     }
@@ -98,6 +100,78 @@ public final class FysfemmanController {
 
             try response.render("index.stencil", context: context).end()
         } catch {}
+    }
+
+    private func onGetActivities(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+        activities.get(withUserID: "1") { activities, error in
+            do {
+                guard error == nil else {
+                    try response.status(.badRequest).end()
+                    Log.error(error.debugDescription)
+                    return
+                }
+                guard let activities = activities else {
+                    try response.status(.internalServerError).end()
+                    return
+                }
+
+                let json = JSON(activities)
+                try response.status(.OK).send(json: json).end()
+            } catch {
+                Log.error("Communication error")
+            }
+        }
+    }
+
+    private func onAddActivity(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+        guard let body = request.body else {
+            Log.error("No body found")
+            response.status(.badRequest)
+            return
+        }
+
+        guard case let .json(json) = body else {
+            Log.error("Body contains invalid JSON")
+            response.status(.badRequest)
+            return
+        }
+        let userID = 1
+
+        guard let date = json["date"].string,
+            let rating = json["rating"].int,
+            let activityType = json["activityType"].int,
+            let units = json["units"].double,
+            let bonus = json["bonusMultiplier"].double
+            else {
+                Log.error("Body contains invalid JSON")
+                do {
+                    try response.status(.badRequest).end()
+                } catch {
+                    Log.error("Communication error")
+                }
+                return
+        }
+        Log.info("Success")
+
+        let bonusMultiplier = bonus / 100 + 1
+
+        activities.add(userID: userID, date: date, rating: rating, activityType: activityType, units: units, bonusMultiplier: bonusMultiplier) { activity, error in
+            do {
+                guard error == nil else {
+                    try response.status(.badRequest).end()
+                    Log.error(error.debugDescription)
+                    return
+                }
+                guard let activity = activity else {
+                    try response.status(.internalServerError).end()
+                    return
+                }
+                let json = JSON(activity)
+                try response.status(.OK).send(json: json).end()
+            } catch {
+                Log.error("Communication error")
+            }
+        }
     }
 
     private func onLogin(request: RouterRequest, response: RouterResponse, next: () -> Void) {
