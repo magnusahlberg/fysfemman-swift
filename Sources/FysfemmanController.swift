@@ -25,10 +25,11 @@ class Users : Table {
 }
 
 public final class FysfemmanController {
+    public let router = Router()
+
     private let activities: Activities
     private let users = Users()
     private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
-    public let router = Router()
 
     // Initialising our KituraSession
     private let session = Session(secret: "")

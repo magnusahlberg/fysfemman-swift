@@ -34,10 +34,9 @@ class ActivityTypesTable : Table {
 
 
 public final class Activities {
-    public let connection: PostgreSQLConnection
-
     private let activities = ActivitiesTable()
     private let activityTypes = ActivityTypesTable()
+    private let connection: PostgreSQLConnection
 
     public init(withConnection connection: PostgreSQLConnection) {
         self.connection = connection
