@@ -12,6 +12,9 @@ import Kitura
 import KituraStencil
 import KituraSession
 
+import Credentials
+import CredentialsHTTP
+
 import LoggerAPI
 import SwiftKuery
 import SwiftKueryPostgreSQL
@@ -30,6 +33,7 @@ public final class FysfemmanController {
     private let activities: Activities
     private let users = Users()
     private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
+    private let credentials = Credentials()
 
     // Initialising our KituraSession
     private let session = Session(secret: "")
@@ -41,6 +45,9 @@ public final class FysfemmanController {
             }
         }
         activities = Activities(withConnection: self.connection)
+
+        credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: verifyPassword, realm: "Kitura-Realm"))
+
         setupRoutes()
     }
 
@@ -48,6 +55,7 @@ public final class FysfemmanController {
         router.add(templateEngine: StencilTemplateEngine())
         router.all(middleware: session)
         router.all(middleware: BodyParser())
+        router.all("/api", middleware: credentials)
         router.get("/", handler: onIndex)
         router.get("/api/1/activities", handler: onGetActivities)
         router.post("/api/1/activities", handler: onAddActivity)
@@ -55,12 +63,9 @@ public final class FysfemmanController {
         router.post("/logout", handler: onLogout)
     }
 
-    private func isAuthorized(email: String, password: String) -> Bool {
-        //Connect to database
-        var authorized = false
-
+    private func verifyPassword(userID: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
         let query = Select(users.email, users.password, from: users)
-            .where(users.email == email)
+            .where(users.email == userID)
 
         connection.execute(query: query) { result in
             if let rows = result.asRows {
@@ -68,7 +73,8 @@ public final class FysfemmanController {
                 if rows.count > 0 {
                     if let truePassword = rows[0]["password"] as? String {
                         if truePassword == password {
-                            authorized = true
+                            callback(UserProfile(id: userID, displayName: userID, provider: "Kitura-HTTP"))
+                            return
                         }
                     }
                 } else {
@@ -78,8 +84,8 @@ public final class FysfemmanController {
             } else if let queryError = result.asError {
                 Log.error("Something went wrong \(queryError)")
             }
+            callback(nil)
         }
-        return authorized
     }
 
     private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
