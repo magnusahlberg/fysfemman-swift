@@ -59,8 +59,6 @@ public final class FysfemmanController {
         router.get("/", handler: onIndex)
         router.get("/api/1/activities", handler: onGetActivities)
         router.post("/api/1/activities", handler: onAddActivity)
-        router.post("/login", handler: onLogin)
-        router.post("/logout", handler: onLogout)
     }
 
     private func verifyPassword(userID: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
@@ -179,53 +177,5 @@ public final class FysfemmanController {
                 Log.error("Communication error")
             }
         }
-    }
-
-    private func onLogin(request: RouterRequest, response: RouterResponse, next: () -> Void) {
-        defer {
-            next()
-        }
-
-        let maybeSess = request.session
-
-        var maybeEmail: String?
-        var maybePassword: String?
-
-        do {
-            switch request.body {
-            case .urlEncoded(let params)?:
-                Log.info("URL encoded")
-                maybeEmail = params["email"]
-                maybePassword = params["password"]
-            default:
-                try response.send("fail").end()
-                break
-            }
-
-            if let email = maybeEmail?.removingPercentEncoding, let password = maybePassword?.removingPercentEncoding, let sess = maybeSess {
-                if isAuthorized(email: email, password: password) {
-                    Log.info("Logged in")
-                    sess["email"] = JSON(email)
-                    try response.send("done").end()
-                }
-            }
-            try response.send("fail").end()
-        } catch {}
-
-    }
-
-    private func onLogout(request: RouterRequest, response: RouterResponse, next: () -> Void) {
-        //Destroy all data in our session
-        request.session?.destroy() {
-            (error: NSError?) in
-            if let error = error {
-                if Log.isLogging(.error) {
-                    Log.error("\(error)")
-                }
-            }
-        }
-        do {
-            try response.send("done").end()
-        } catch {}
     }
 }
