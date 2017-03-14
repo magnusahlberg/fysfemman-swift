@@ -162,7 +162,6 @@ public final class FysfemmanController {
                 }
                 return
         }
-        Log.info("Success")
 
         let bonusMultiplier = bonus / 100 + 1
 
@@ -175,6 +174,7 @@ public final class FysfemmanController {
                 }
                 guard let activity = activity else {
                     try response.status(.internalServerError).end()
+                    Log.error("No activity returned")
                     return
                 }
                 let json = JSON(activity)
