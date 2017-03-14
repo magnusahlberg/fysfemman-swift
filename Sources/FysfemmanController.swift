@@ -9,6 +9,7 @@
 import Foundation
 
 import Kitura
+import KituraCORS
 import KituraStencil
 import KituraSession
 
@@ -52,10 +53,14 @@ public final class FysfemmanController {
     }
 
     private func setupRoutes() {
+        let options = Options(allowedOrigin: .all)
+        let cors = CORS(options: options)
+
         router.add(templateEngine: StencilTemplateEngine())
         router.all(middleware: session)
         router.all(middleware: BodyParser())
         router.all("/api", middleware: credentials)
+        router.all(middleware: cors)
         router.get("/", handler: onIndex)
         router.get("/api/1/activities", handler: onGetActivities)
         router.post("/api/1/activities", handler: onAddActivity)
