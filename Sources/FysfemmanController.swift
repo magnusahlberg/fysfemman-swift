@@ -40,11 +40,6 @@ public final class FysfemmanController {
     private let session = Session(secret: "")
 
     public init() {
-        connection.connect() { error in
-            if let error = error {
-                Log.error("SQL: Could not connect: \(error)")
-            }
-        }
         activities = Activities(withConnection: self.connection)
 
         credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: verifyPassword, realm: "Kitura-Realm"))
@@ -70,24 +65,30 @@ public final class FysfemmanController {
         let query = Select(users.email, users.password, from: users)
             .where(users.email == userID)
 
-        connection.execute(query: query) { result in
-            if let rows = result.asRows {
-                Log.info("Rows: \(rows.count))")
-                if rows.count > 0 {
-                    if let truePassword = rows[0]["password"] as? String {
-                        if truePassword == password {
-                            callback(UserProfile(id: userID, displayName: userID, provider: "Kitura-HTTP"))
-                            return
-                        }
-                    }
-                } else {
-                    //TBD: Send user / password incorrect response
-                    Log.error("User not found")
-                }
-            } else if let queryError = result.asError {
-                Log.error("Something went wrong \(queryError)")
+        connection.connect() { error in
+            if let error = error {
+                Log.error("SQL: Could not connect: \(error)")
+                callback(nil)
+                return
             }
-            callback(nil)
+            connection.execute(query: query) { result in
+                if let rows = result.asRows {
+                    if rows.count > 0 {
+                        if let truePassword = rows[0]["password"] as? String {
+                            if truePassword == password {
+                                callback(UserProfile(id: userID, displayName: userID, provider: "Kitura-HTTP"))
+                                return
+                            }
+                        }
+                    } else {
+                        //TBD: Send user / password incorrect response
+                        Log.error("User not found")
+                    }
+                } else if let queryError = result.asError {
+                    Log.error("Something went wrong \(queryError)")
+                }
+                callback(nil)
+            }
         }
     }
 
