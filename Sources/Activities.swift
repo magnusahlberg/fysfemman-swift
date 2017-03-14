@@ -55,6 +55,8 @@ public final class Activities {
                 return
             }
             let query = Select(from: activities)
+                .leftJoin(activityTypes)
+                .on(activities.activity_type == activityTypes.id)
                 .where(activities.user_id == userId)
 
             var activitiesDictionary = [[String: Any]]()
