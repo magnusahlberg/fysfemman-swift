@@ -21,18 +21,11 @@ import SwiftKuery
 import SwiftKueryPostgreSQL
 import SwiftyJSON
 
-class Users : Table {
-    let tableName = "users"
-    let uid = Column("uid")
-    let email = Column("email")
-    let password = Column("password")
-}
-
 public final class FysfemmanController {
     public let router = Router()
 
     private let activities: Activities
-    private let users = Users()
+    private let users: Users
     private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
     private let credentials = Credentials()
 
@@ -41,8 +34,9 @@ public final class FysfemmanController {
 
     public init() {
         activities = Activities(withConnection: self.connection)
+        users = Users(withConnection: self.connection)
 
-        credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: verifyPassword, realm: "Kitura-Realm"))
+        credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: users.verifyPassword, realm: "Kitura-Realm"))
 
         setupRoutes()
     }
@@ -59,37 +53,6 @@ public final class FysfemmanController {
         router.get("/", handler: onIndex)
         router.get("/api/1/activities", handler: onGetActivities)
         router.post("/api/1/activities", handler: onAddActivity)
-    }
-
-    private func verifyPassword(userID: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
-        let query = Select(users.email, users.password, from: users)
-            .where(users.email == userID)
-
-        connection.connect() { error in
-            if let error = error {
-                Log.error("SQL: Could not connect: \(error)")
-                callback(nil)
-                return
-            }
-            connection.execute(query: query) { result in
-                if let rows = result.asRows {
-                    if rows.count > 0 {
-                        if let truePassword = rows[0]["password"] as? String {
-                            if truePassword == password {
-                                callback(UserProfile(id: userID, displayName: userID, provider: "Kitura-HTTP"))
-                                return
-                            }
-                        }
-                    } else {
-                        //TBD: Send user / password incorrect response
-                        Log.error("User not found")
-                    }
-                } else if let queryError = result.asError {
-                    Log.error("Something went wrong \(queryError)")
-                }
-                callback(nil)
-            }
-        }
     }
 
     private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
