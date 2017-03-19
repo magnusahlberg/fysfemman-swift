@@ -48,11 +48,11 @@ public final class FysfemmanController {
         router.add(templateEngine: StencilTemplateEngine())
         router.all(middleware: session)
         router.all(middleware: BodyParser())
-        router.all("/api", middleware: credentials)
         router.all(middleware: cors)
+        router.all("/api", middleware: credentials)
         router.get("/", handler: onIndex)
-        router.get("/api/1/activities", handler: onGetActivities)
-        router.post("/api/1/activities", handler: onAddActivity)
+        router.get("/api/v1/activities", handler: onGetActivities)
+        router.post("/api/v1/activities", handler: onAddActivity)
     }
 
     private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
