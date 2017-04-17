@@ -10,7 +10,6 @@ import Foundation
 
 import Kitura
 import KituraCORS
-import KituraStencil
 import KituraSession
 
 import Credentials
@@ -47,7 +46,6 @@ public final class FysfemmanController {
         let options = Options(allowedOrigin: .all)
         let cors = CORS(options: options)
 
-        router.add(templateEngine: StencilTemplateEngine())
         router.all(middleware: session)
         router.all(middleware: BodyParser())
         router.all(middleware: cors)
@@ -64,20 +62,7 @@ public final class FysfemmanController {
             next()
         }
 
-        let maybeSess = request.session
-
-        var context: [String: Any] = [:]
-        do {
-            //Check if we have a session and it has a value for email
-            guard let sess = maybeSess, let email = sess["email"].string else {
-                try response.render("login.stencil", context: context).end()
-                return
-            }
-
-            context["name"] = email
-
-            try response.render("index.stencil", context: context).end()
-        } catch {}
+        //TODO: Send Aurelia client
     }
 
     private func onGetActivities(request: RouterRequest, response: RouterResponse, next: () -> Void) {
