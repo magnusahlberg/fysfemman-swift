@@ -57,6 +57,19 @@ public final class FysfemmanController {
         router.post("/api/v1/login/:mobile", handler: onPostLogin)
     }
 
+    private func bodyAsJson(_ body: ParsedBody?) -> JSON? {
+        guard let body = body else {
+            Log.error("No body found")
+            return nil
+        }
+
+        guard case let .json(json) = body else {
+            Log.error("Body contains invalid JSON")
+            return nil
+        }
+        return json
+    }
+
     private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
         defer {
             next()
@@ -169,8 +182,7 @@ public final class FysfemmanController {
             return
         }
 
-        guard case let .json(json) = body else {
-            Log.error("Body contains invalid JSON")
+        guard let json = bodyAsJson(request.body) else {
             response.status(.badRequest)
             return
         }
