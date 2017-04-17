@@ -36,7 +36,7 @@ public final class FysfemmanController {
         activities = Activities(withConnection: self.connection)
         users = Users(withConnection: self.connection)
 
-        credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: users.verifyPassword, realm: "Kitura-Realm"))
+        credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: users.verifyCredentials, realm: "Kitura-Realm"))
 
         setupRoutes()
     }
@@ -77,7 +77,14 @@ public final class FysfemmanController {
     }
 
     private func onGetActivities(request: RouterRequest, response: RouterResponse, next: () -> Void) {
-        activities.get(withUserID: "1") { activities, error in
+        guard let userProfile = request.userProfile else {
+            do {
+                try response.status(.badRequest).end()
+            } catch { Log.error("Communication error") }
+            return
+        }
+
+        activities.get(withUserID: userProfile.id) { activities, error in
             do {
                 guard error == nil else {
                     try response.status(.badRequest).end()
@@ -98,9 +105,10 @@ public final class FysfemmanController {
     }
 
     private func onAddActivity(request: RouterRequest, response: RouterResponse, next: () -> Void) {
-        guard let body = request.body else {
-            Log.error("No body found")
-            response.status(.badRequest)
+        guard let userProfile = request.userProfile else {
+            do {
+                try response.status(.unauthorized).end()
+            } catch { Log.error("Communication error") }
             return
         }
 
@@ -109,11 +117,11 @@ public final class FysfemmanController {
             response.status(.badRequest)
             return
         }
-        let userID = 1
+        let userID = userProfile.id
 
         guard let date = json["date"].string,
             let rating = json["rating"].int,
-            let activityType = json["activityType"].int,
+            let activityType = json["activityType"].string,
             let units = json["units"].double,
             let bonus = json["bonusMultiplier"].double
             else {

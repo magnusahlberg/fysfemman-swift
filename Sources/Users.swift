@@ -20,53 +20,76 @@ class UsersTable: Table {
     let password = Column("password")
 }
 
-class Users {
+class Users: DatabaseModel {
     private let users = UsersTable()
 
-    private let connection: PostgreSQLConnection
+    public func get(byMobile mobile: String, callback: @escaping([String:Any?]?)->Void) -> Void {
+        let query = Select(from: users)
+            .where(users.mobile == mobile)
 
-    public init(withConnection connection: PostgreSQLConnection) {
-        self.connection = connection
-    }
+        executeQuery(query: query) { result in
+            guard let result = result else {
+                callback(nil)
+                return
+            }
 
-    public func get(userID: String) {
-        // TODO
+            if
+                let rows = result.asRows,
+                let row = rows.first,
+                let userId = row["id"] as? Data {
+                let user = [
+                    "id": uuidString(withData: userId),
+                    "name": row["name"],
+                    "admin": row["admin"]
+                ]
+                callback(user)
+                return
+            } else if let queryError = result.asError {
+                Log.error("Something went wrong \(queryError)")
+            } else {
+                Log.error("No user found with mobile: \(mobile)")
+            }
+
+            callback(nil)
+        }
     }
 
     public func add(name: String, email: String, password: String, callback: @escaping(Error?) -> Void) {
         // TODO
     }
 
-    public func verifyPassword(userID email: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
-        let query = Select(users.email, users.password, from: users)
-            .where(users.email == email)
+    public func verifyCredentials(token: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
+        let query = Select(credentials.userId, users.name, from: credentials)
+            .leftJoin(users)
+            .on(credentials.userId == users.id)
+            .where(credentials.token == token)
 
-        connection.connect() { error in
-            if let error = error {
-                Log.error("SQL: Could not connect: \(error)")
+        executeQuery(query: query) { result in
+            guard let result = result else {
                 callback(nil)
                 return
             }
-            connection.execute(query: query) { result in
-                if let rows = result.asRows {
-                    if rows.count > 0 {
-                        if let truePassword = rows[0]["password"] as? String {
-                            if truePassword == password {
-                                let name = rows[0]["name"] as? String ?? ""
-
-                                callback(UserProfile(id: email, displayName: name, provider: "Kitura-HTTP"))
-                                return
-                            }
-                        }
-                    } else {
-                        //TBD: Send user / password incorrect response
-                        Log.error("User not found")
-                    }
-                } else if let queryError = result.asError {
-                    Log.error("Something went wrong \(queryError)")
-                }
+            if let queryError = result.asError {
+                Log.error("Something went wrong \(queryError)")
                 callback(nil)
+                return
             }
+
+            guard let rows = result.asRows,
+               let row = rows.first,
+               let name = row["name"] as? String,
+               let id = row["user_id"] as? Data
+            else {
+                //TBD: Send user / password incorrect response
+                Log.error("User not found")
+                callback(nil)
+                return
+            }
+
+            let userID = uuidString(withData: id)
+            Log.info("Authenticated user: \(userID)")
+            callback(UserProfile(id: userID, displayName: name, provider: "Kitura-HTTP"))
+            return
         }
     }
 

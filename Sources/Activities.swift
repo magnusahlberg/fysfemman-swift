@@ -32,115 +32,88 @@ class ActivityTypesTable : Table {
     let multiplier = Column("multiplier")
 }
 
-enum ActivityError: Error {
-    case ConnectionError
-    case NoData
-}
-
-public final class Activities {
+class Activities: DatabaseModel {
     private let activities = ActivitiesTable()
     private let activityTypes = ActivityTypesTable()
-    private let connection: PostgreSQLConnection
 
-    public init(withConnection connection: PostgreSQLConnection) {
-        self.connection = connection
-    }
+    public func get(withUserID userID: String, oncompletion: @escaping([[String: Any?]]?, Error?) -> Void) {
 
-    public func get(withUserID userId: String, oncompletion: @escaping([[String: Any]]?, Error?) -> Void) {
+        let query = "SELECT name, units, unit, bonus_multiplier, points, rating FROM activities LEFT JOIN activity_types ON activities.activity_type = activity_types.id WHERE activities.user_id = '\(userID)'::uuid"
 
-        connection.connect() { error in
-            if let error = error {
-                Log.error("SQL: Could not connect: \(error)")
-                oncompletion(nil, ActivityError.ConnectionError)
+        executeQuery(query) { result in
+            guard let result = result else {
+                Log.warning("Error Connecting to DB")
+                oncompletion(nil, DatabaseError.ConnectionError)
                 return
             }
-            let query = Select(from: activities)
-                .leftJoin(activityTypes)
-                .on(activities.activity_type == activityTypes.id)
-                .where(activities.user_id == userId)
-
-            var activitiesDictionary = [[String: Any]]()
-
-            connection.execute(query: query) { result in
-                if let rows = result.asRows {
-                    activitiesDictionary = rows
-                    oncompletion(activitiesDictionary, nil)
-                } else if let queryError = result.asError {
-                    oncompletion(nil, queryError)
-                } else {
-                    Log.warning("No rows returned")
-                    oncompletion(nil, ActivityError.NoData)
-                }
+            if let rows = result.asRows {
+                oncompletion(rows, nil)
+            } else if let queryError = result.asError {
+                oncompletion(nil, queryError)
+            } else {
+                Log.warning("No rows returned")
+                oncompletion(nil, DatabaseError.NoData)
             }
         }
     }
 
-    public func add(userID: Int, date: String, rating: Int, activityType: Int, units: Double, bonusMultiplier: Double, oncompletion: @escaping([String: Any]?, Error?) -> Void) {
+    public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Double, oncompletion: @escaping([String: Any]?, Error?) -> Void) {
 
-        getActivityType(byID: activityType) { result, error in
+        getActivityType(byID: activityType) { activityTypeResult, error in
             let points: Double
 
-            guard let result = result else {
+            guard let activityTypeResult = activityTypeResult else {
                 Log.error("No activity for multiplier found")
                 return
             }
 
-            let multiplierString = result["multiplier"] as? String ?? "0"
+            let multiplier = activityTypeResult["multiplier"] as? Double ?? 0.0
+            points = units * multiplier * bonusMultiplier
 
-            if let multiplier = Double(multiplierString) {
-                points = units * multiplier * bonusMultiplier
-            } else {
-                Log.error("Could not convert multiplier to double")
-                points = 0
-            }
+            let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date) VALUES ('\(userID)'::uuid, '\(date)', \(rating), '\(activityType)'::uuid, \(units), \(bonusMultiplier), \(points), current_timestamp) RETURNING id"
 
-            self.connection.connect() { error in
-                if let error = error {
-                    Log.error("SQL: Could not connect: \(error)")
-                    oncompletion(nil, ActivityError.ConnectionError)
+            self.executeQuery(query) { result in
+                guard let result = result else { oncompletion(nil, DatabaseError.ConnectionError); return }
+                guard result.success == true else { oncompletion(nil, DatabaseError.NoData); return }
+
+                if let queryError = result.asError {
+                    Log.error("Error: \(queryError)")
+                    oncompletion(nil, queryError)
                     return
                 }
-                let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date) VALUES (\(userID), '\(date)', \(rating), \(activityType), \(units), \(bonusMultiplier), \(points), current_timestamp) RETURNING id"
-                self.connection.execute(query) { result in
-                    if result.success {
-                        var activity = [String: Any]()
-                        activity["user_id"] = userID
-                        activity["date"] = date
-                        activity["rating"] = rating
-                        activity["activity_type"] = activityType
-                        activity["units"] = units
-                        activity["bonus_multiplier"] = bonusMultiplier
-                        activity["points"] = points
 
-                        oncompletion(activity, nil)
-                    } else if let queryError = result.asError {
-                        Log.error("Error: \(queryError)")
-                        oncompletion(nil, queryError)
-                    }
-                }
+                let activity = [
+                    "user_id": userID,
+                    "date": date,
+                    "rating": rating,
+                    "activity_type": activityType,
+                    "units": units,
+                    "bonus_multiplier": bonusMultiplier,
+                    "points": points
+                ] as [String : Any]
+
+                oncompletion(activity, nil)
             }
         }
     }
 
-    private func getActivityType(byID id: Int, oncompletion: @escaping([String: Any]?, Error?) -> Void) {
+    private func getActivityType(byID id: String, oncompletion: @escaping([String: Any?]?, Error?) -> Void) {
         let query = Select(from: activityTypes)
                         .where(activityTypes.id == id)
-        connection.connect() { error in
-            if let error = error {
-                Log.error("SQL: Could not connect: \(error)")
-                oncompletion(nil, ActivityError.ConnectionError)
+        executeQuery(query: query) { result in
+            guard let result = result else {
+                oncompletion(nil, DatabaseError.ConnectionError)
                 return
             }
-            connection.execute(query: query) { result in
-                if let rows = result.asRows {
-                    oncompletion(rows[0], nil)
-                } else if let queryError = result.asError {
-                    Log.error("Error: \(queryError)")
-                    oncompletion(nil, queryError)
-                } else {
-                    Log.error("No data")
-                    oncompletion(nil, ActivityError.NoData)
-                }
+
+            if let rows = result.asRows {
+                oncompletion(rows[0], nil)
+            } else if let queryError = result.asError {
+                Log.error("Error: \(queryError)")
+                oncompletion(nil, queryError)
+            } else {
+                Log.error("No data")
+                oncompletion(nil, DatabaseError.NoData)
             }
         }
     }
