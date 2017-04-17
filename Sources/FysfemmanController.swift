@@ -49,7 +49,7 @@ public final class FysfemmanController {
         router.all(middleware: session)
         router.all(middleware: BodyParser())
         router.all(middleware: cors)
-        router.all("/api", middleware: credentials)
+        router.all("/api/v1/activities", middleware: credentials)
         router.get("/", handler: onIndex)
         router.get("/api/v1/activities", handler: onGetActivities)
         router.post("/api/v1/activities", handler: onAddActivity)
