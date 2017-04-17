@@ -98,8 +98,8 @@ public final class FysfemmanController {
                     return
                 }
 
-                let json = JSON(activities)
-                try response.status(.OK).send(json: json).end()
+                let jsonResponse = JSON(activities)
+                try response.status(.OK).send(json: jsonResponse).end()
             } catch {
                 Log.error("Communication error")
             }

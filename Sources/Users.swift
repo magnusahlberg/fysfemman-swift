@@ -124,5 +124,4 @@ class Users: DatabaseModel {
         }
     }
 
-
 }
