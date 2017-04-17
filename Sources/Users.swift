@@ -16,12 +16,22 @@ class UsersTable: Table {
     let tableName = "users"
     let id = Column("id")
     let name = Column("name")
-    let email = Column("email")
-    let password = Column("password")
+    let mobile = Column("mobile")
+}
+
+class CredentialsTable: Table {
+    let tableName = "credentials"
+    let id = Column("id")
+    let userId = Column("user_id")
+    let token = Column("token")
+    let name = Column("name")
+    let issued = Column("issued")
+    let expires = Column("expires")
 }
 
 class Users: DatabaseModel {
     private let users = UsersTable()
+    private let credentials = CredentialsTable()
 
     public func get(byMobile mobile: String, callback: @escaping([String:Any?]?)->Void) -> Void {
         let query = Select(from: users)
@@ -54,8 +64,29 @@ class Users: DatabaseModel {
         }
     }
 
-    public func add(name: String, email: String, password: String, callback: @escaping(Error?) -> Void) {
-        // TODO
+    public func generateToken(forUser userID: String, callback: @escaping([String:Any?]?)->Void) -> Void {
+
+        let query = "INSERT INTO credentials (user_id, name) VALUES ('\(userID)'::uuid,'fysfemman.se') RETURNING token"
+
+        self.executeQuery(query) { result in
+            guard
+                let result = result,
+                result.success == true,
+                let rows = result.asRows,
+                let row = rows.first,
+                let tokenData = row["token"] as? Data
+            else {
+                callback(nil)
+                return
+            }
+
+            let token = [
+                "token": uuidString(withData: tokenData)
+            ] as [String: Any?]
+
+            callback(token)
+        }
+
     }
 
     public func verifyCredentials(token: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {

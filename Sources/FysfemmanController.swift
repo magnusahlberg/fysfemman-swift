@@ -26,6 +26,7 @@ public final class FysfemmanController {
 
     private let activities: Activities
     private let users: Users
+    private let loginCodes = LoginCodes()
     private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
     private let credentials = Credentials()
 
@@ -35,6 +36,7 @@ public final class FysfemmanController {
     public init() {
         activities = Activities(withConnection: self.connection)
         users = Users(withConnection: self.connection)
+        loginCodes.setupCodeInvalidationTimer(interval: 60.0)
 
         credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: users.verifyCredentials, realm: "Kitura-Realm"))
 
@@ -53,6 +55,8 @@ public final class FysfemmanController {
         router.get("/", handler: onIndex)
         router.get("/api/v1/activities", handler: onGetActivities)
         router.post("/api/v1/activities", handler: onAddActivity)
+        router.get("/api/v1/login/:mobile", handler: onGetLogin)
+        router.post("/api/v1/login/:mobile", handler: onPostLogin)
     }
 
     private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
@@ -101,6 +105,74 @@ public final class FysfemmanController {
             } catch {
                 Log.error("Communication error")
             }
+        }
+    }
+
+    private func onGetLogin(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+        guard let mobile = request.parameters["mobile"] else {
+            do {
+                try response.status(.badRequest).end()
+            } catch { Log.error("Communication error") }
+            return
+        }
+
+        users.get(byMobile: mobile) { user in
+            do {
+                guard
+                    let user = user,
+                    let userId = user["id"] as? String
+                else {
+                    try response.status(.badRequest).end()
+                    return
+                }
+                let name = user["name"] as? String ?? ""
+                let code = self.loginCodes.generateAndAdd(forUser: userId, withMobile: mobile)
+                Log.info("Code generated for user \(name): \(code)")
+
+                try response.status(.OK).end()
+            } catch {
+                Log.error("Communication error")
+            }
+        }
+    }
+
+    private func onPostLogin(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+        guard
+            let json = bodyAsJson(request.body),
+            let mobile = request.parameters["mobile"]
+        else {
+            do {
+                try response.status(.badRequest).end()
+            } catch { Log.error("Communication error") }
+            return
+        }
+
+        guard let code = json["code"].string else {
+            Log.error("No code submitted")
+            do {
+                try response.status(.badRequest).end()
+            } catch { Log.error("Communication error") }
+            return
+        }
+
+        if let userId = loginCodes.verify(code: code, withMobile: mobile) {
+            users.generateToken(forUser: userId) { token in
+                do {
+                    guard let token = token else {
+                        try response.status(.internalServerError).end()
+                        return
+                    }
+
+                    let json = JSON(token)
+                    try response.status(.OK).send(json: json).end()
+                } catch {
+                    Log.error("Communication error")
+                }
+            }
+        } else {
+            do {
+                try response.status(.unauthorized).end()
+            } catch { Log.error("Communication error") }
         }
     }
 
