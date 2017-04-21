@@ -47,8 +47,9 @@ class Users: DatabaseModel {
                 {
                     let user: [String: Any] = [
                         "id": uuidString(withData: userId),
-                        "name": row["name"]
-                        "admin": row["admin"]
+                        "name": row["name"] as? String ?? "",
+                        "admin": row["admin"] as? Bool ?? false,
+                        "datareader": row["datareader"] as? Bool ?? false
                     ]
                     callback(user)
                     return
