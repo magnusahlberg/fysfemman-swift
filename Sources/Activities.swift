@@ -83,7 +83,7 @@ class Activities: DatabaseModel {
                         return
                     }
 
-                    let activity = [
+                    let activity: [String: Any] = [
                         "user_id": userID,
                         "date": date,
                         "rating": rating,
@@ -92,7 +92,7 @@ class Activities: DatabaseModel {
                         "bonus_multiplier": bonusMultiplier,
                         "points": points,
                         "comment": comment
-                        ] as [String : Any]
+                    ]
 
                     oncompletion(activity, nil)
                 }
