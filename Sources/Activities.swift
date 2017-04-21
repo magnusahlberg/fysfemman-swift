@@ -40,20 +40,20 @@ class Activities: DatabaseModel {
 
         let query = "SELECT name, units, unit, bonus_multiplier, points, rating FROM activities LEFT JOIN activity_types ON activities.activity_type = activity_types.id WHERE activities.user_id = '\(userID)'::uuid"
 
-        executeQuery(query) { result in
-            guard let result = result else {
-                Log.warning("Error Connecting to DB")
-                oncompletion(nil, DatabaseError.ConnectionError)
-                return
+        if let connection = self.pool.getConnection() {
+            connection.execute(query) { result in
+                if let rows = result.asRows {
+                    oncompletion(rows, nil)
+                } else if let queryError = result.asError {
+                    oncompletion(nil, queryError)
+                } else {
+                    Log.warning("No rows returned")
+                    oncompletion(nil, DatabaseError.NoData)
+                }
             }
-            if let rows = result.asRows {
-                oncompletion(rows, nil)
-            } else if let queryError = result.asError {
-                oncompletion(nil, queryError)
-            } else {
-                Log.warning("No rows returned")
-                oncompletion(nil, DatabaseError.NoData)
-            }
+        } else {
+            Log.warning("Error Connecting to DB")
+            oncompletion(nil, DatabaseError.ConnectionError)
         }
     }
 
@@ -72,27 +72,31 @@ class Activities: DatabaseModel {
 
             let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date) VALUES ('\(userID)'::uuid, '\(date)', \(rating), '\(activityType)'::uuid, \(units), \(bonusMultiplier), \(points), current_timestamp) RETURNING id"
 
-            self.executeQuery(query) { result in
-                guard let result = result else { oncompletion(nil, DatabaseError.ConnectionError); return }
-                guard result.success == true else { oncompletion(nil, DatabaseError.NoData); return }
+            if let connection = self.pool.getConnection() {
+                connection.execute(query) { result in
+                    guard result.success == true else { oncompletion(nil, DatabaseError.NoData); return }
 
-                if let queryError = result.asError {
-                    Log.error("Error: \(queryError)")
-                    oncompletion(nil, queryError)
-                    return
+                    if let queryError = result.asError {
+                        Log.error("Error: \(queryError)")
+                        oncompletion(nil, queryError)
+                        return
+                    }
+
+                    let activity = [
+                        "user_id": userID,
+                        "date": date,
+                        "rating": rating,
+                        "activity_type": activityType,
+                        "units": units,
+                        "bonus_multiplier": bonusMultiplier,
+                        "points": points
+                        ] as [String : Any]
+
+                    oncompletion(activity, nil)
                 }
-
-                let activity = [
-                    "user_id": userID,
-                    "date": date,
-                    "rating": rating,
-                    "activity_type": activityType,
-                    "units": units,
-                    "bonus_multiplier": bonusMultiplier,
-                    "points": points
-                ] as [String : Any]
-
-                oncompletion(activity, nil)
+            } else {
+                Log.warning("Error Connecting to DB")
+                oncompletion(nil, DatabaseError.ConnectionError)
             }
         }
     }
@@ -100,21 +104,21 @@ class Activities: DatabaseModel {
     private func getActivityType(byID id: String, oncompletion: @escaping([String: Any?]?, Error?) -> Void) {
         let query = Select(from: activityTypes)
                         .where(activityTypes.id == id)
-        executeQuery(query: query) { result in
-            guard let result = result else {
-                oncompletion(nil, DatabaseError.ConnectionError)
-                return
+        if let connection = self.pool.getConnection() {
+            connection.execute(query: query) { result in
+                if let rows = result.asRows {
+                    oncompletion(rows[0], nil)
+                } else if let queryError = result.asError {
+                    Log.error("Error: \(queryError)")
+                    oncompletion(nil, queryError)
+                } else {
+                    Log.error("No data")
+                    oncompletion(nil, DatabaseError.NoData)
+                }
             }
-
-            if let rows = result.asRows {
-                oncompletion(rows[0], nil)
-            } else if let queryError = result.asError {
-                Log.error("Error: \(queryError)")
-                oncompletion(nil, queryError)
-            } else {
-                Log.error("No data")
-                oncompletion(nil, DatabaseError.NoData)
-            }
+        } else {
+            Log.warning("Error Connecting to DB")
+            oncompletion(nil, DatabaseError.ConnectionError)
         }
     }
 }

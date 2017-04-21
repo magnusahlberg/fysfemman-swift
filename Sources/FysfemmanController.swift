@@ -26,15 +26,15 @@ public final class FysfemmanController {
     private let activities: Activities
     private let users: Users
     private let loginCodes = LoginCodes()
-    private let connection = PostgreSQLConnection(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")])
+    private let connection = PostgreSQLConnection.createPool(host: "localhost", port: 5432, options: [.databaseName("fysfemman"), .userName("fysfemman")], poolOptions: ConnectionPoolOptions(initialCapacity: 10, maxCapacity: 50, timeout: 10000))
     private let credentials = Credentials()
 
     // Initialising our KituraSession
     private let session = Session(secret: "")
 
     public init() {
-        activities = Activities(withConnection: self.connection)
-        users = Users(withConnection: self.connection)
+        activities = Activities(withConnectionPool: self.connection)
+        users = Users(withConnectionPool: self.connection)
         loginCodes.setupCodeInvalidationTimer(interval: 60.0)
 
         credentials.register(plugin: CredentialsHTTPBasic(verifyPassword: users.verifyCredentials, realm: "Kitura-Realm"))

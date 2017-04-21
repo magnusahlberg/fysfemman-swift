@@ -34,32 +34,34 @@ class Users: DatabaseModel {
     private let credentials = CredentialsTable()
 
     public func get(byMobile mobile: String, callback: @escaping([String:Any?]?)->Void) -> Void {
+
         let query = Select(from: users)
             .where(users.mobile == mobile)
 
-        executeQuery(query: query) { result in
-            guard let result = result else {
+        if let connection = self.pool.getConnection() {
+            connection.execute(query: query) { result in
+                if
+                    let rows = result.asRows,
+                    let row = rows.first,
+                    let userId = row["id"] as? Data
+                {
+                    let user: [String: Any] = [
+                        "id": uuidString(withData: userId),
+                        "name": row["name"]
+                        "admin": row["admin"]
+                    ]
+                    callback(user)
+                    return
+                } else if let queryError = result.asError {
+                    Log.error("Something went wrong \(queryError)")
+                } else {
+                    Log.error("No user found with mobile: \(mobile)")
+                }
+
                 callback(nil)
-                return
             }
-
-            if
-                let rows = result.asRows,
-                let row = rows.first,
-                let userId = row["id"] as? Data {
-                let user = [
-                    "id": uuidString(withData: userId),
-                    "name": row["name"],
-                    "admin": row["admin"]
-                ]
-                callback(user)
-                return
-            } else if let queryError = result.asError {
-                Log.error("Something went wrong \(queryError)")
-            } else {
-                Log.error("No user found with mobile: \(mobile)")
-            }
-
+        } else {
+            Log.warning("Error Connecting to DB")
             callback(nil)
         }
     }
@@ -68,23 +70,27 @@ class Users: DatabaseModel {
 
         let query = "INSERT INTO credentials (user_id, name) VALUES ('\(userID)'::uuid,'fysfemman.se') RETURNING token"
 
-        self.executeQuery(query) { result in
-            guard
-                let result = result,
-                result.success == true,
-                let rows = result.asRows,
-                let row = rows.first,
-                let tokenData = row["token"] as? Data
-            else {
-                callback(nil)
-                return
+        if let connection = self.pool.getConnection() {
+            connection.execute(query) { result in
+                guard
+                    result.success == true,
+                    let rows = result.asRows,
+                    let row = rows.first,
+                    let tokenData = row["token"] as? Data
+                else {
+                        callback(nil)
+                        return
+                }
+
+                let token: [String: Any?] = [
+                    "token": uuidString(withData: tokenData)
+                ]
+
+                callback(token)
             }
-
-            let token = [
-                "token": uuidString(withData: tokenData)
-            ] as [String: Any?]
-
-            callback(token)
+        } else {
+            Log.warning("Error Connecting to DB")
+            callback(nil)
         }
 
     }
@@ -95,32 +101,34 @@ class Users: DatabaseModel {
             .on(credentials.userId == users.id)
             .where(credentials.token == token)
 
-        executeQuery(query: query) { result in
-            guard let result = result else {
-                callback(nil)
-                return
-            }
-            if let queryError = result.asError {
-                Log.error("Something went wrong \(queryError)")
-                callback(nil)
-                return
-            }
+        if let connection = self.pool.getConnection() {
+            connection.execute(query: query) { result in
+                if let queryError = result.asError {
+                    Log.error("Something went wrong \(queryError)")
+                    callback(nil)
+                    return
+                }
 
-            guard let rows = result.asRows,
-               let row = rows.first,
-               let name = row["name"] as? String,
-               let id = row["user_id"] as? Data
-            else {
-                //TBD: Send user / password incorrect response
-                Log.error("User not found")
-                callback(nil)
+                guard
+                    let rows = result.asRows,
+                    let row = rows.first,
+                    let name = row["name"] as? String,
+                    let id = row["user_id"] as? Data
+                else {
+                        //TBD: Send user / password incorrect response
+                        Log.error("User not found")
+                        callback(nil)
+                        return
+                }
+
+                let userID = uuidString(withData: id)
+                Log.info("Authenticated user: \(userID)")
+                callback(UserProfile(id: userID, displayName: name, provider: "Kitura-HTTP"))
                 return
             }
-
-            let userID = uuidString(withData: id)
-            Log.info("Authenticated user: \(userID)")
-            callback(UserProfile(id: userID, displayName: name, provider: "Kitura-HTTP"))
-            return
+        } else {
+            Log.warning("Error Connecting to DB")
+            callback(nil)
         }
     }
 
