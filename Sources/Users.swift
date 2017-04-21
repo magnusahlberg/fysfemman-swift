@@ -93,10 +93,10 @@ class Users: DatabaseModel {
             Log.warning("Error Connecting to DB")
             callback(nil)
         }
-
     }
 
     public func verifyCredentials(token: String, password: String, callback: @escaping(UserProfile?)->Void) -> Void {
+
         let query = Select(credentials.userId, users.name, from: credentials)
             .leftJoin(users)
             .on(credentials.userId == users.id)
@@ -132,5 +132,4 @@ class Users: DatabaseModel {
             callback(nil)
         }
     }
-
 }
