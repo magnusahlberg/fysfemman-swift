@@ -1,5 +1,3 @@
-DROP TABLE activities;
-
 CREATE TABLE activities (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v1mc(),
     user_id             UUID references users(id),

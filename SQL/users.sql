@@ -1,5 +1,3 @@
-DROP TABLE users;
-
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v1mc(),
     name varchar(128) NOT NULL,

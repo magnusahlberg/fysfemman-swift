@@ -1,5 +1,3 @@
-DROP TABLE credentials;
-
 CREATE TABLE credentials (
     id bigserial PRIMARY KEY,
     user_id UUID references users(id),
