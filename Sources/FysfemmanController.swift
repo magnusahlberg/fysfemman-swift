@@ -203,9 +203,17 @@ public final class FysfemmanController {
                 return
         }
 
+        let comment = json["comment"].string ?? ""
         let bonusMultiplier = bonus / 100 + 1
 
-        activities.add(userID: userID, date: date, rating: rating, activityType: activityType, units: units, bonusMultiplier: bonusMultiplier) { activity, error in
+        activities.add(userID: userID,
+                       date: date,
+                       rating: rating,
+                       activityType: activityType,
+                       units: units,
+                       bonusMultiplier: bonusMultiplier,
+                       comment: comment)
+        { activity, error in
             do {
                 guard error == nil else {
                     try response.status(.badRequest).end()

@@ -7,5 +7,6 @@ CREATE TABLE activities (
     units               double precision,
     bonus_multiplier    integer,
     points              double precision,
-    registered_date     timestamptz DEFAULT current_timestamp
+    registered_date     timestamptz DEFAULT current_timestamp,
+    comment             varchar(256)
 );

@@ -22,6 +22,7 @@ class ActivitiesTable : Table {
     let bonus_multiplier = Column("bonus_multiplier")
     let points = Column("points")
     let registered_date = Column("registered_date")
+    let comment = Column("comment")
 }
 
 class ActivityTypesTable : Table {
@@ -38,7 +39,7 @@ class Activities: DatabaseModel {
 
     public func get(withUserID userID: String, oncompletion: @escaping([[String: Any?]]?, Error?) -> Void) {
 
-        let query = "SELECT name, units, unit, bonus_multiplier, points, rating FROM activities LEFT JOIN activity_types ON activities.activity_type = activity_types.id WHERE activities.user_id = '\(userID)'::uuid"
+        let query = "SELECT name, units, unit, bonus_multiplier, points, rating, comment FROM activities LEFT JOIN activity_types ON activities.activity_type = activity_types.id WHERE activities.user_id = '\(userID)'::uuid"
 
         if let connection = self.pool.getConnection() {
             connection.execute(query) { result in
@@ -57,7 +58,7 @@ class Activities: DatabaseModel {
         }
     }
 
-    public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Double, oncompletion: @escaping([String: Any]?, Error?) -> Void) {
+    public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Double, comment: String = "", oncompletion: @escaping([String: Any]?, Error?) -> Void) {
 
         getActivityType(byID: activityType) { activityTypeResult, error in
             let points: Double
@@ -70,7 +71,7 @@ class Activities: DatabaseModel {
             let multiplier = activityTypeResult["multiplier"] as? Double ?? 0.0
             points = units * multiplier * bonusMultiplier
 
-            let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date) VALUES ('\(userID)'::uuid, '\(date)', \(rating), '\(activityType)'::uuid, \(units), \(bonusMultiplier), \(points), current_timestamp) RETURNING id"
+            let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date, comment) VALUES ('\(userID)'::uuid, '\(date)', \(rating), '\(activityType)'::uuid, \(units), \(bonusMultiplier), \(points), current_timestamp, '\(comment)') RETURNING id"
 
             if let connection = self.pool.getConnection() {
                 connection.execute(query) { result in
@@ -89,7 +90,8 @@ class Activities: DatabaseModel {
                         "activity_type": activityType,
                         "units": units,
                         "bonus_multiplier": bonusMultiplier,
-                        "points": points
+                        "points": points,
+                        "comment": comment
                         ] as [String : Any]
 
                     oncompletion(activity, nil)
