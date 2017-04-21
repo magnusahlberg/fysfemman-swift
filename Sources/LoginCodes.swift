@@ -1,5 +1,5 @@
 import Foundation
-import Security
+import Cryptor
 import LoggerAPI
 
 let CODE_LIFETIME_MINUTES = 15
@@ -20,16 +20,20 @@ struct Code {
     public static func generateRandomCode() -> String {
         let bytesCount = 4
         var randomNum: UInt32 = 0
-        var randomBytes = [UInt8](repeating: 0, count: bytesCount)
+        let randomBytes: [UInt8]
 
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytesCount, &randomBytes)
+        do {
+            randomBytes = try Random.generate(byteCount: bytesCount)
+            NSData(bytes: randomBytes, length: bytesCount).getBytes(&randomNum, length: bytesCount)
 
-        NSData(bytes: randomBytes, length: bytesCount).getBytes(&randomNum, length: bytesCount)
+            let code = String(format: "%04d", Int(floor(Double(randomNum) / Double(UInt32.max) * 9999.0)))
 
-        let code = String(format: "%04d", Int(floor(Double(randomNum) / Double(UInt32.max) * 9999.0)))
-
-        Log.info("Generated code: \(code)")
-        return code
+            Log.info("Generated code: \(code)")
+            return code
+        } catch {
+            Log.error("Error generating random bytes")
+            return "0000"
+        }
     }
 }
 
