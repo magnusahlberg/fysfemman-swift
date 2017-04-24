@@ -103,11 +103,39 @@ class Activities: DatabaseModel {
         }
     }
 
-    private func getActivityType(byID id: String, oncompletion: @escaping([String: Any?]?, Error?) -> Void) {
+    public func getActivityTypes(oncompletion: @escaping([[String: Any?]]?, Error?) -> Void) {
         let query = Select(from: activityTypes)
-                        .where(activityTypes.id == id)
+
         if let connection = self.pool.getConnection() {
             connection.execute(query: query) { result in
+                if let activities = result.asRows {
+                    let newActivities: [[String: Any?]] = activities.map{
+                        var newActivity = $0
+                        if let idData = newActivity["id"] as? Data {
+                            newActivity["id"] = uuidString(withData: idData)
+                        }
+                        return newActivity
+                    }
+                    oncompletion(newActivities, nil)
+                } else if let queryError = result.asError {
+                    Log.error("Error: \(queryError)")
+                    oncompletion(nil, queryError)
+                } else {
+                    Log.error("No data")
+                    oncompletion(nil, DatabaseError.NoData)
+                }
+            }
+        } else {
+            Log.warning("Error Connecting to DB")
+            oncompletion(nil, DatabaseError.ConnectionError)
+        }
+    }
+
+    private func getActivityType(byID id: String, oncompletion: @escaping([String: Any?]?, Error?) -> Void) {
+        let query = "SELECT * FROM activity_types WHERE id = '\(id)'::uuid"
+
+        if let connection = self.pool.getConnection() {
+            connection.execute(query) { result in
                 if let rows = result.asRows {
                     oncompletion(rows[0], nil)
                 } else if let queryError = result.asError {

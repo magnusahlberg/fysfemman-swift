@@ -50,9 +50,11 @@ public final class FysfemmanController {
         router.all(middleware: BodyParser())
         router.all(middleware: cors)
         router.all("/api/v1/activities", middleware: credentials)
+        router.all("/api/v1/activityTypes", middleware: credentials)
         router.get("/", handler: onIndex)
         router.get("/api/v1/activities", handler: onGetActivities)
         router.post("/api/v1/activities", handler: onAddActivity)
+        router.get("/api/v1/activityTypes", handler: onGetActivityTypes)
         router.get("/api/v1/login/:mobile", handler: onGetLogin)
         router.post("/api/v1/login/:mobile", handler: onPostLogin)
     }
@@ -99,6 +101,27 @@ public final class FysfemmanController {
                 }
 
                 let jsonResponse = JSON(activities)
+                try response.status(.OK).send(json: jsonResponse).end()
+            } catch {
+                Log.error("Communication error")
+            }
+        }
+    }
+
+    private func onGetActivityTypes(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+        activities.getActivityTypes() { activityTypes, error in
+            do {
+                guard error == nil else {
+                    try response.status(.badRequest).end()
+                    Log.error(error.debugDescription)
+                    return
+                }
+                guard let activityTypes = activityTypes else {
+                    try response.status(.internalServerError).end()
+                    return
+                }
+
+                let jsonResponse = JSON(activityTypes)
                 try response.status(.OK).send(json: jsonResponse).end()
             } catch {
                 Log.error("Communication error")
