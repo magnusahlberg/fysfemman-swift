@@ -38,6 +38,9 @@ struct Code {
 }
 
 class LoginCodes {
+    private let accountSid = ""
+    private let authToken = ""
+    private let fromNumber = ""
     private var codes: [Code]
     private var timer: Timer?
 
@@ -54,6 +57,7 @@ class LoginCodes {
     public func generateAndAdd(forUser userId: String, withMobile mobile: String) -> String {
         let code = Code(userId: userId, mobile: mobile)
         codes.append(code)
+        sendCode(code.code, to: mobile)
         return code.code
     }
 
@@ -79,4 +83,30 @@ class LoginCodes {
         }
     }
 
+    private func sendCode(_ code: String, to mobile: String) {
+        let url = URL(string: "https://api.twilio.com/2010-04-01/Accounts/\(accountSid)/Messages.json")!
+        let authStringEncoded = "\(accountSid):\(authToken)".data(using: .utf8)!.base64EncodedString()
+
+        var request: URLRequest = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = "To=%2B\(mobile)&From=\(fromNumber)&Body=Your+login+code+is%3A+\(code)".data(using: .utf8)
+        request.setValue("Basic \(authStringEncoded)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+
+        let task = URLSession.shared.dataTask(with: request, completionHandler: { data, response, error in
+
+            if data != nil {
+
+                do {
+                    let json = try JSONSerialization.jsonObject(with: data!, options: .allowFragments) as! NSDictionary
+                    Log.info(json.debugDescription)
+                } catch let error as NSError {
+                    Log.info(error.debugDescription)
+                }
+            } else {
+                Log.error("No data received")
+            }
+        })
+        task.resume()
+    }
 }
