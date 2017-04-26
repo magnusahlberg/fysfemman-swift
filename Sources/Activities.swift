@@ -69,7 +69,7 @@ class Activities: DatabaseModel {
             }
 
             let multiplier = activityTypeResult["multiplier"] as? Double ?? 0.0
-            points = units * multiplier * bonusMultiplier
+            points = (units * multiplier * (Double(bonusMultiplier) / 100.0 + 1) * 1000).rounded() / 1000
 
             let query = "INSERT INTO activities (user_id, date, rating, activity_type, units, bonus_multiplier, points, registered_date, comment) VALUES ('\(userID)'::uuid, '\(date)', \(rating), '\(activityType)'::uuid, \(units), \(bonusMultiplier), \(points), current_timestamp, '\(comment)') RETURNING id"
 
