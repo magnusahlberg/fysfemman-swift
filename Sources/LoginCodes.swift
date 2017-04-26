@@ -28,7 +28,6 @@ struct Code {
 
             let code = String(format: "%04d", Int(floor(Double(randomNum) / Double(UInt32.max) * 9999.0)))
 
-            Log.info("Generated code: \(code)")
             return code
         } catch {
             Log.error("Error generating random bytes")
