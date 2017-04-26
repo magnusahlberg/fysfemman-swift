@@ -215,7 +215,7 @@ public final class FysfemmanController {
             let rating = json["rating"].int,
             let activityType = json["activityType"].string,
             let units = json["units"].double,
-            let bonus = json["bonusMultiplier"].double
+            let bonusMultiplier = json["bonusMultiplier"].int
             else {
                 Log.error("Body contains invalid JSON")
                 do {
@@ -227,7 +227,6 @@ public final class FysfemmanController {
         }
 
         let comment = json["comment"].string ?? ""
-        let bonusMultiplier = bonus / 100 + 1
 
         activities.add(userID: userID,
                        date: date,

@@ -58,7 +58,7 @@ class Activities: DatabaseModel {
         }
     }
 
-    public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Double, comment: String = "", oncompletion: @escaping([String: Any]?, Error?) -> Void) {
+    public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Int, comment: String = "", oncompletion: @escaping([String: Any]?, Error?) -> Void) {
 
         getActivityType(byID: activityType) { activityTypeResult, error in
             let points: Double
