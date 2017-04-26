@@ -36,22 +36,15 @@ class Users: DatabaseModel {
     public func get(byMobile mobile: String, callback: @escaping([String:Any?]?)->Void) -> Void {
 
         let query = Select(from: users)
-            .where(users.mobile == mobile)
+            .where(users.mobile == Parameter())
 
         if let connection = self.pool.getConnection() {
-            connection.execute(query: query) { result in
+            connection.execute(query: query, parameters: [mobile]) { result in
                 if
                     let rows = result.asRows,
-                    let row = rows.first,
-                    let userId = row["id"] as? Data
+                    let row = rows.first
                 {
-                    let user: [String: Any] = [
-                        "id": uuidString(withData: userId),
-                        "name": row["name"] as? String ?? "",
-                        "admin": row["admin"] as? Bool ?? false,
-                        "datareader": row["datareader"] as? Bool ?? false
-                    ]
-                    callback(user)
+                    callback(row)
                     return
                 } else if let queryError = result.asError {
                     Log.error("Something went wrong \(queryError)")
@@ -69,25 +62,24 @@ class Users: DatabaseModel {
 
     public func generateToken(forUser userID: String, callback: @escaping([String:Any?]?)->Void) -> Void {
 
-        let query = "INSERT INTO credentials (user_id, name) VALUES ('\(userID)'::uuid,'fysfemman.se') RETURNING token"
+        let query = Insert(into: credentials, columns: [credentials.userId, credentials.name], values: [Parameter(), "fysfemman.se"])
+                    .suffix("RETURNING token")
 
         if let connection = self.pool.getConnection() {
-            connection.execute(query) { result in
+            connection.execute(query: query, parameters: [userID]) { result in
                 guard
-                    result.success == true,
                     let rows = result.asRows,
-                    let row = rows.first,
-                    let tokenData = row["token"] as? Data
+                    let row = rows.first
                 else {
-                        callback(nil)
-                        return
+                    Log.error("Failed to insert new token in database")
+                    if let error = result.asError {
+                        Log.error("Error: \(error)")
+                    }
+                    callback(nil)
+                    return
                 }
 
-                let token: [String: Any?] = [
-                    "token": uuidString(withData: tokenData)
-                ]
-
-                callback(token)
+                callback(row)
             }
         } else {
             Log.warning("Error Connecting to DB")
@@ -100,10 +92,10 @@ class Users: DatabaseModel {
         let query = Select(credentials.userId, users.name, from: credentials)
             .leftJoin(users)
             .on(credentials.userId == users.id)
-            .where(credentials.token == token)
+            .where(credentials.token == Parameter())
 
         if let connection = self.pool.getConnection() {
-            connection.execute(query: query) { result in
+            connection.execute(query: query, parameters: [token]) { result in
                 if let queryError = result.asError {
                     Log.error("Something went wrong \(queryError)")
                     callback(nil)
@@ -114,7 +106,7 @@ class Users: DatabaseModel {
                     let rows = result.asRows,
                     let row = rows.first,
                     let name = row["name"] as? String,
-                    let id = row["user_id"] as? Data
+                    let userID = row["user_id"] as? String
                 else {
                         //TBD: Send user / password incorrect response
                         Log.error("User not found")
@@ -122,8 +114,7 @@ class Users: DatabaseModel {
                         return
                 }
 
-                let userID = uuidString(withData: id)
-                Log.info("Authenticated user: \(userID)")
+                Log.info("Authenticated user: \(userID) as \(name)")
                 callback(UserProfile(id: userID, displayName: name, provider: "Kitura-HTTP"))
                 return
             }
