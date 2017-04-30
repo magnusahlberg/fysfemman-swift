@@ -1,6 +1,7 @@
 import Foundation
 import Cryptor
 import LoggerAPI
+import SwiftyJSON
 
 let CODE_LIFETIME_MINUTES = 15
 
@@ -92,20 +93,14 @@ class LoginCodes {
         request.setValue("Basic \(authStringEncoded)", forHTTPHeaderField: "Authorization")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let task = URLSession.shared.dataTask(with: request, completionHandler: { data, response, error in
-
-            if data != nil {
-
-                do {
-                    let json = try JSONSerialization.jsonObject(with: data!, options: .allowFragments) as! NSDictionary
-                    Log.info(json.debugDescription)
-                } catch let error as NSError {
-                    Log.info(error.debugDescription)
-                }
-            } else {
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data else {
                 Log.error("No data received")
+                return
             }
-        })
+            let json = JSON(data)
+            Log.info(json.debugDescription)
+        }
         task.resume()
     }
 }
