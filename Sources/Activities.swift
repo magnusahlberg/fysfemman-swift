@@ -146,7 +146,12 @@ class Activities: DatabaseModel {
 
         if let connection = self.pool.getConnection() {
             connection.execute(query: query) { result in
-                if let activities = result.asRows {
+                if let rows = result.asRows {
+                    let activities: [[String: Any?]] = rows.map {
+                        var newActivity = $0
+                        newActivity["multiplier"] = $0["multiplier"] as? Double ?? 0.0
+                        return $0
+                    }
                     oncompletion(activities, nil)
                 } else if let queryError = result.asError {
                     Log.error("Error: \(queryError)")
