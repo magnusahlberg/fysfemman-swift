@@ -51,7 +51,7 @@ public final class FysfemmanController {
         router.all(middleware: cors)
         router.all("/api/v1/activities", middleware: credentials)
         router.all("/api/v1/activityTypes", middleware: credentials)
-        router.get("/", handler: onIndex)
+        router.all("/", middleware: StaticFileServer(path: "./public_html"))
         router.get("/api/v1/activities", handler: onGetActivities)
         router.post("/api/v1/activities", handler: onAddActivity)
         router.get("/api/v1/activityTypes", handler: onGetActivityTypes)
@@ -70,14 +70,6 @@ public final class FysfemmanController {
             return nil
         }
         return json
-    }
-
-    private func onIndex(request: RouterRequest, response: RouterResponse, next: () -> Void) {
-        defer {
-            next()
-        }
-
-        //TODO: Send Aurelia client
     }
 
     private func onGetActivities(request: RouterRequest, response: RouterResponse, next: () -> Void) {
