@@ -3,7 +3,7 @@ CREATE TABLE activities (
     user_id             UUID references users(id),
     date                date,
     rating              integer,
-    activity_type       UUID references activity_types(id),
+    activity_type_id    UUID references activity_types(id),
     units               double precision,
     bonus_multiplier    integer,
     points              double precision,
