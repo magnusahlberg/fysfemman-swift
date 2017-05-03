@@ -58,7 +58,13 @@ class Activities: DatabaseModel {
         if let connection = self.pool.getConnection() {
             connection.execute(query: query, parameters: [userID]) { result in
                 if let rows = result.asRows {
-                    oncompletion(rows, nil)
+                   let activities: [[String: Any?]] = rows.map {
+                        var activity = $0
+                        activity["bonus_multiplier"] = Int($0["bonus_multiplier"] as? Int32 ?? 0)
+                        activity["rating"] = Int($0["rating"] as? Int32 ?? 0)
+                        return activity
+                    }
+                    oncompletion(activities, nil)
                 } else if let queryError = result.asError {
                     oncompletion(nil, queryError)
                 } else {
