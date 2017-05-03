@@ -53,6 +53,7 @@ class Activities: DatabaseModel {
             .leftJoin(activityTypes)
             .on(activities.activityTypeId == activityTypes.id)
             .where(activities.userId == Parameter())
+            .order(by: .DESC(activities.date), .DESC(activities.registered_date))
 
         if let connection = self.pool.getConnection() {
             connection.execute(query: query, parameters: [userID]) { result in
@@ -143,6 +144,7 @@ class Activities: DatabaseModel {
 
     public func getActivityTypes(oncompletion: @escaping([[String: Any?]]?, Error?) -> Void) {
         let query = Select(from: activityTypes)
+            .order(by: .ASC(activityTypes.name))
 
         if let connection = self.pool.getConnection() {
             connection.execute(query: query) { result in
