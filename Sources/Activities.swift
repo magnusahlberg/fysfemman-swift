@@ -10,6 +10,7 @@ import Foundation
 import LoggerAPI
 import SwiftKuery
 import SwiftKueryPostgreSQL
+import SwiftyJSON
 
 class ActivitiesTable : Table {
     let tableName = "activities"
@@ -191,4 +192,28 @@ class Activities: DatabaseModel {
             oncompletion(nil, DatabaseError.ConnectionError)
         }
     }
+
+    public func sendActivity(userName: String, activityName: String, units: String, unit: String, points: String) {
+
+        let url = URL(string: "https://hooks.slack.com/services/")!
+
+        var request: URLRequest = URLRequest(url: url)
+        request.httpMethod = "POST"
+
+        let jsonString = "{\"text\": \"\(userName) har tränat! \(activityName), \(units) \(unit). Ökar med \(points) poäng.\"}"
+        Log.info(jsonString)
+        request.httpBody = jsonString.data(using: .utf8)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let task = URLSession(configuration: URLSessionConfiguration.default).dataTask(with: request) { data, response, error in
+            guard let data = data else {
+                Log.error("No data received")
+                return
+            }
+            let json = JSON(data)
+            Log.info(json.debugDescription)
+        }
+        task.resume()
+    }
+
 }

@@ -202,6 +202,7 @@ public final class FysfemmanController {
             return
         }
         let userID = userProfile.id
+        let userName = userProfile.displayName
 
         guard let date = json["date"].string,
             let rating = json["rating"].int,
@@ -241,6 +242,7 @@ public final class FysfemmanController {
                 }
                 let json = JSON(activity)
                 try response.status(.OK).send(json: json).end()
+                self.activities.sendActivity(userName: userName, activityName: json["name"].stringValue , units: json["units"].stringValue, unit: json["unit"].stringValue, points: json["points"].stringValue)
             } catch {
                 Log.error("Communication error")
             }
