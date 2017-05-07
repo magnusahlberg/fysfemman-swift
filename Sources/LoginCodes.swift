@@ -93,7 +93,7 @@ class LoginCodes {
         request.setValue("Basic \(authStringEncoded)", forHTTPHeaderField: "Authorization")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: URLSessionConfiguration.ephemeral).dataTask(with: request) { data, response, error in
             guard let data = data else {
                 Log.error("No data received")
                 return
