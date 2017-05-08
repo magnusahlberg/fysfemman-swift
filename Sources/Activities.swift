@@ -37,6 +37,7 @@ class ActivityTypesTable : Table {
 class Activities: DatabaseModel {
     private let activities = ActivitiesTable()
     private let activityTypes = ActivityTypesTable()
+    private let users = UsersTable()
 
     public func get(withUserID userID: String, oncompletion: @escaping([[String: Any?]]?, Error?) -> Void) {
 
@@ -77,6 +78,52 @@ class Activities: DatabaseModel {
             Log.warning("Error Connecting to DB")
             oncompletion(nil, DatabaseError.ConnectionError)
         }
+    }
+
+    public func getAll(oncompletion: @escaping([[String:Any?]]?, Error?) -> Void) {
+
+        let query = Select(
+            activities.id,
+            users.name.as("user"),
+            RawField("to_char(date, 'YYYY-MM-DD') as date"),
+            activities.rating,
+            activityTypes.name,
+            activities.units,
+            activityTypes.unit,
+            activities.bonusMultiplier,
+            activities.points,
+            activities.comment,
+            from: activities
+            )
+        .leftJoin(activityTypes)
+        .on(activities.activityTypeId == activityTypes.id)
+        .leftJoin(users)
+        .on(activities.userId == users.id)
+        .order(by: .ASC(activities.date), .ASC(activities.registered_date))
+
+        if let connection = self.pool.getConnection() {
+            connection.execute(query: query) { result in
+                if let rows = result.asRows {
+                    let activities: [[String: Any?]] = rows.map {
+                        var activity = $0
+                        activity["bonus_multiplier"] = Int($0["bonus_multiplier"] as? Int32 ?? 0)
+                        activity["rating"] = Int($0["rating"] as? Int32 ?? 0)
+                        return activity
+                    }
+                    Log.info(String(describing: activities))
+                    oncompletion(activities, nil)
+                } else if let queryError = result.asError {
+                    oncompletion(nil, queryError)
+                } else {
+                    Log.warning("No rows returned")
+                    oncompletion(nil, DatabaseError.NoData)
+                }
+            }
+        } else {
+            Log.warning("Error Connecting to DB")
+            oncompletion(nil, DatabaseError.ConnectionError)
+        }
+
     }
 
     public func add(userID: String, date: String, rating: Int, activityType: String, units: Double, bonusMultiplier: Int, comment: String = "", oncompletion: @escaping([String: Any]?, Error?) -> Void) {

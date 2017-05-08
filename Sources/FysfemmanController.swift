@@ -52,6 +52,8 @@ public final class FysfemmanController {
         router.all("/api/v1/activities", middleware: credentials)
         router.all("/api/v1/activityTypes", middleware: credentials)
         router.all("/", middleware: StaticFileServer(path: "./public_html"))
+
+        router.get("/api/v1/allActivities", handler: onGetAllActivities)
         router.get("/api/v1/activities", handler: onGetActivities)
         router.post("/api/v1/activities", handler: onAddActivity)
         router.get("/api/v1/activityTypes", handler: onGetActivityTypes)
@@ -88,11 +90,37 @@ public final class FysfemmanController {
                     return
                 }
                 guard let activities = activities else {
+                    Log.error("No data")
                     try response.status(.internalServerError).end()
                     return
                 }
 
                 let jsonResponse = JSON(activities)
+                Log.info(jsonResponse.description)
+                try response.status(.OK).send(json: jsonResponse).end()
+            } catch {
+                Log.error("Communication error")
+            }
+        }
+    }
+
+    private func onGetAllActivities(request: RouterRequest, response: RouterResponse, next: () -> Void) {
+
+        activities.getAll() { activities, error in
+            do {
+                guard error == nil else {
+                    try response.status(.badRequest).end()
+                    Log.error(error.debugDescription)
+                    return
+                }
+                guard let activities = activities else {
+                    Log.error("No data")
+                    try response.status(.internalServerError).end()
+                    return
+                }
+
+                let jsonResponse = JSON(activities)
+                Log.info(jsonResponse.description)
                 try response.status(.OK).send(json: jsonResponse).end()
             } catch {
                 Log.error("Communication error")
